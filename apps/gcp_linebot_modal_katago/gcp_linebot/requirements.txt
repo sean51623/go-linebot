@@ -39,3 +39,6 @@ openai>=1.0.0
 # Modal SDK
 modal>=1.3.0
 
+# Testing
+pytest>=8.0
+

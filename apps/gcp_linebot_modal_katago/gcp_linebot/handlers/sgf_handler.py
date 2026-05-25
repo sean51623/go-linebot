@@ -95,13 +95,8 @@ def extract_moves(root_node):
         if node.has_property("B"):
             move_number += 1
             coord = node.get("B")
-            if isinstance(coord, (list, tuple)) and len(coord) > 0:
-                coord = coord[0]
-            # sgfmill returns coordinates as tuples (x, y)
-            if isinstance(coord, (list, tuple)) and len(coord) == 2:
-                coord_str = chr(coord[0] + 97) + chr(
-                    coord[1] + 97
-                )  # Convert to SGF format
+            if isinstance(coord, tuple) and len(coord) == 2 and isinstance(coord[0], int):
+                coord_str = chr(coord[1] + 97) + chr((18 - coord[0]) + 97)
             else:
                 coord_str = str(coord)
             current_move = {
@@ -117,13 +112,8 @@ def extract_moves(root_node):
         elif node.has_property("W"):
             move_number += 1
             coord = node.get("W")
-            if isinstance(coord, (list, tuple)) and len(coord) > 0:
-                coord = coord[0]
-            # sgfmill returns coordinates as tuples (x, y)
-            if isinstance(coord, (list, tuple)) and len(coord) == 2:
-                coord_str = chr(coord[0] + 97) + chr(
-                    coord[1] + 97
-                )  # Convert to SGF format
+            if isinstance(coord, tuple) and len(coord) == 2 and isinstance(coord[0], int):
+                coord_str = chr(coord[1] + 97) + chr((18 - coord[0]) + 97)
             else:
                 coord_str = str(coord)
             current_move = {
