@@ -7,10 +7,6 @@ import asyncio
 from pathlib import Path
 from typing import Optional, Dict, Any, List
 from linebot.v3.messaging import (
-    Configuration,
-    ApiClient,
-    MessagingApi,
-    MessagingApiBlob,
     ReplyMessageRequest,
     PushMessageRequest,
 )
@@ -20,7 +16,6 @@ from linebot.v3.messaging.models import (
     FlexMessage,
     FlexContainer,
 )
-from linebot.v3.messaging.exceptions import ApiException
 from sgfmill import sgf
 
 from config import config
@@ -38,14 +33,12 @@ from handlers.game_state import (
     get_game_state, restore_game_from_sgf_file, create_sgf_with_first_n_moves,
     restore_game_from_sgf, save_game_sgf, reset_game_state,
 )
-
-# Initialize LINE Bot API v3 with timeout configuration
-configuration = Configuration(access_token=config["line"]["channel_access_token"])
-# Set timeout to prevent indefinite hanging (30 seconds)
-configuration.timeout = 30
-api_client = ApiClient(configuration)
-line_bot_api = MessagingApi(api_client)
-blob_api = MessagingApiBlob(api_client)
+from handlers.line_sender import (
+    line_bot_api, blob_api,
+    is_valid_https_url, encode_url_path,
+    create_video_preview_bubble, create_carousel_flex_message,
+    send_message,
+)
 
 
 bot_user_id: Optional[str] = None
@@ -85,21 +78,6 @@ async def get_bot_display_name() -> Optional[str]:
             logger.error(f"Failed to get bot info: {error}", exc_info=True)
             return None
     return bot_display_name
-
-
-def get_review_selection_metric(target_id: str) -> str:
-    """Get review move-selection metric for target (default: winrate)."""
-    metric = review_selection_metrics.get(target_id, DEFAULT_REVIEW_SELECTION_METRIC)
-    return metric if metric in REVIEW_SELECTION_METRICS else DEFAULT_REVIEW_SELECTION_METRIC
-
-
-def save_review_selection_metric(target_id: str, metric: str) -> bool:
-    """Save review move-selection metric for target."""
-    normalized = (metric or "").strip().lower()
-    if normalized not in REVIEW_SELECTION_METRICS:
-        return False
-    review_selection_metrics[target_id] = normalized
-    return True
 
 
 def is_valid_https_url(url: str) -> bool:
@@ -318,52 +296,6 @@ async def save_sgf_file(file_buffer: bytes, original_file_name: str) -> Dict[str
         f.write(file_buffer)
 
     return {"fileName": original_file_name, "filePath": str(file_path)}
-
-
-async def send_message(
-    target_id: str, reply_token: Optional[str], messages: List[Any]
-) -> bool:
-    """Send message (prefer replyMessage to reduce usage, fallback to pushMessage if replyToken expired)"""
-    from urllib3.exceptions import ReadTimeoutError
-    from requests.exceptions import Timeout, ConnectionError
-    
-    # If there's a replyToken, try to use replyMessage
-    if reply_token:
-        try:
-            # Run synchronous call in thread pool
-            request = ReplyMessageRequest(reply_token=reply_token, messages=messages)
-            await asyncio.to_thread(line_bot_api.reply_message, request)
-            logger.info(f"Sent reply message to {target_id} (message count: {len(messages)})")
-            return True  # Successfully used replyMessage
-        except (ReadTimeoutError, Timeout, ConnectionError, TimeoutError) as e:
-            # Network timeout or connection error
-            logger.error(f"Network timeout/connection error when sending reply to {target_id}: {type(e).__name__}: {e}")
-            logger.warning("Message delivery failed due to network issues. Please check your internet connection.")
-            return False  # Failed to send
-        except ApiException as e:
-            # replyToken may have expired, fallback to pushMessage
-            if e.status in [400, 410]:
-                logger.warning(f"replyToken expired or invalid for {target_id}, using pushMessage instead")
-            else:
-                logger.error(f"Error sending reply message to {target_id}: {e}", exc_info=True)
-                raise
-        except Exception as e:
-            logger.error(f"Unexpected error sending reply message to {target_id}: {type(e).__name__}: {e}", exc_info=True)
-            return False
-
-    # Use pushMessage
-    try:
-        request = PushMessageRequest(to=target_id, messages=messages)
-        await asyncio.to_thread(line_bot_api.push_message, request)
-        logger.info(f"Sent push message to {target_id} (message count: {len(messages)})")
-        return True
-    except (ReadTimeoutError, Timeout, ConnectionError, TimeoutError) as e:
-        logger.error(f"Network timeout/connection error when sending push message to {target_id}: {type(e).__name__}: {e}")
-        logger.warning("Message delivery failed due to network issues. Please check your internet connection.")
-        return False
-    except Exception as e:
-        logger.error(f"Unexpected error sending push message to {target_id}: {type(e).__name__}: {e}", exc_info=True)
-        return False
 
 
 async def handle_review_command(target_id: str, reply_token: Optional[str]):
