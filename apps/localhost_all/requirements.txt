@@ -39,3 +39,6 @@ openai>=1.0.0
 
 # UUID
 uuid
+
+# Testing
+pytest>=8.0
