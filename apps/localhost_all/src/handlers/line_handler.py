@@ -31,6 +31,13 @@ from handlers.draw_handler import draw_all_moves_gif
 from LLM.providers.openai_provider import call_openai
 from handlers.go_engine import GoBoard
 from handlers.board_visualizer import BoardVisualizer
+from handlers.game_state import (
+    game_states, game_ids, vs_ai_modes,
+    current_sgf_file_name,
+    get_game_id, enable_vs_ai_mode, disable_vs_ai_mode, is_vs_ai_mode,
+    get_game_state, restore_game_from_sgf_file, create_sgf_with_first_n_moves,
+    restore_game_from_sgf, save_game_sgf, reset_game_state,
+)
 
 # Initialize LINE Bot API v3 with timeout configuration
 configuration = Configuration(access_token=config["line"]["channel_access_token"])
@@ -41,27 +48,8 @@ line_bot_api = MessagingApi(api_client)
 blob_api = MessagingApiBlob(api_client)
 
 
-current_sgf_file_name: Optional[str] = None
 bot_user_id: Optional[str] = None
 bot_display_name: Optional[str] = None
-
-# Game state management (per user/group/room)
-# Key: target_id (userId/groupId/roomId), Value: game state dict
-game_states: Dict[str, Dict[str, Any]] = {}
-
-# Game ID management (per target_id)
-# Key: target_id, Value: game_id (unique ID for each game session)
-game_ids: Dict[str, str] = {}
-
-# VS AI mode management (per target_id)
-# Key: target_id, Value: bool (True if VS AI mode is enabled)
-vs_ai_modes: Dict[str, bool] = {}
-
-# Review selection setting management (per target_id)
-# Key: target_id, Value: "winrate" | "score_loss"
-review_selection_metrics: Dict[str, str] = {}
-DEFAULT_REVIEW_SELECTION_METRIC = "winrate"
-REVIEW_SELECTION_METRICS = {"winrate", "score_loss"}
 
 # Initialize board visualizer (shared instance)
 current_file = Path(__file__)
@@ -386,7 +374,8 @@ async def handle_review_command(target_id: str, reply_token: Optional[str]):
     used_reply_token = False
 
     try:
-        sgf_file_name = current_sgf_file_name
+        import handlers.game_state as _game_state
+        sgf_file_name = _game_state.current_sgf_file_name
         if not sgf_file_name:
             used_reply_token = await send_message(
                 target_id,
@@ -2488,8 +2477,8 @@ async def handle_file_message(event: Dict[str, Any]):
 
         # Save file to static folder
         saved_file = await save_sgf_file(file_buffer, file_name)
-        global current_sgf_file_name
-        current_sgf_file_name = saved_file["fileName"]
+        import handlers.game_state as _game_state
+        _game_state.current_sgf_file_name = saved_file["fileName"]
 
         # Notify user file is saved (use replyMessage to reduce usage)
         request = ReplyMessageRequest(
