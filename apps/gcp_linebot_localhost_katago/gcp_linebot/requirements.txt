@@ -36,3 +36,5 @@ google-cloud-storage>=2.18.0
 # OpenAI SDK
 openai>=1.0.0
 
+# Testing
+pytest>=8.0
