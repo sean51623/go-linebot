@@ -12,10 +12,9 @@ from linebot.v3.messaging.models import (
 from config import config
 from logger import logger
 from handlers.game_state import (
-    game_states, game_ids, vs_ai_modes,
-    get_game_id, enable_vs_ai_mode, disable_vs_ai_mode, is_vs_ai_mode,
-    get_game_state, restore_game_from_sgf_file, create_sgf_with_first_n_moves,
-    restore_game_from_sgf, save_game_sgf, reset_game_state,
+    game_states, game_ids,
+    get_game_id, get_game_state, restore_game_from_sgf_file, create_sgf_with_first_n_moves,
+    restore_game_from_sgf, save_game_sgf,
 )
 from handlers.line_sender import (
     line_bot_api, blob_api,
@@ -27,6 +26,12 @@ from handlers.game_commands import (
 )
 from handlers.review_commands import handle_review_command
 from handlers.evaluation_commands import handle_evaluation_command
+from handlers.ai_mode_commands import (
+    handle_ai_mode_status, handle_enable_ai_mode, handle_disable_ai_mode,
+)
+from handlers.game_state_commands import (
+    handle_resign_command, handle_reset_command,
+)
 
 
 bot_user_id: Optional[str] = None
@@ -431,125 +436,25 @@ async def handle_text_message(event: Dict[str, Any]):
 
     # Handle "對弈" to show current mode status
     if text.lower() in ["對弈", "vs"]:
-        # Check current VS AI mode status
-        vs_ai_mode = is_vs_ai_mode(target_id)
-        state = get_game_state(target_id)
-        current_turn = state.get("current_turn", 1)
-        
-        if vs_ai_mode:
-            mode_text = "AI 對弈模式"
-            ai_color = "黑" if current_turn == 1 else "白"
-            user_color = "白" if current_turn == 1 else "黑"
-            status_message = f"""📊 目前模式：{mode_text}
-
-您執{user_color}，AI 執{ai_color}。
-
-🤖 AI 對弈模式：
-• 您下完一手後，AI 會自動思考並下下一手
-• 適合與 AI 對戰練習
-
-🆓 一般對弈模式：
-• 一人一手棋，輪流下棋
-• 適合與朋友對戰或自己練習
-
-💡 切換模式：
-• 輸入「對弈 ai」開啟 AI 對弈模式
-• 輸入「對弈 free」切換為一般對弈模式"""
-        else:
-            mode_text = "一般對弈模式"
-            status_message = f"""📊 目前模式：{mode_text}
-
-🆓 一般對弈模式：
-• 一人一手棋，輪流下棋
-• 適合與朋友對戰或自己練習
-
-🤖 AI 對弈模式：
-• 您下完一手後，AI 會自動思考並下下一手
-• 適合與 AI 對戰練習
-
-💡 切換模式：
-• 輸入「對弈 ai」開啟 AI 對弈模式
-• 輸入「對弈 free」切換為一般對弈模式"""
-        
-        request = ReplyMessageRequest(
-            reply_token=reply_token,
-            messages=[TextMessage(text=status_message)],
-        )
-        await asyncio.to_thread(line_bot_api.reply_message, request)
+        await handle_ai_mode_status(target_id, reply_token)
         return
 
     # Handle "對弈 ai" to enable VS AI mode
     if text.lower() in ["對弈 ai", "對弈ai", "vs ai", "vsai"]:
-        # Enable VS AI mode
-        success = enable_vs_ai_mode(target_id)
-        if success:
-            # Get current turn to determine AI color
-            state = get_game_state(target_id)
-            current_turn = state.get("current_turn", 1)
-            user_color = "黑" if current_turn == 1 else "白"
-            ai_color = "白" if current_turn == 1 else "黑"
-            
-            request = ReplyMessageRequest(
-                reply_token=reply_token,
-                messages=[
-                    TextMessage(
-                        text=f"✅ 已開啟 AI 對弈模式！\n\n您執{user_color}，AI 執{ai_color}。\n請開始下棋（例如：D4）。"
-                    )
-                ],
-            )
-        else:
-            request = ReplyMessageRequest(
-                reply_token=reply_token,
-                messages=[TextMessage(text="❌ 開啟對弈模式失敗，請稍後再試。")],
-            )
-        await asyncio.to_thread(line_bot_api.reply_message, request)
+        await handle_enable_ai_mode(target_id, reply_token)
         return
 
     # Handle "對弈 free" to disable VS AI mode
     if text.lower() in ["對弈 free", "對弈free", "vs free", "vsfree"]:
-        # Disable VS AI mode
-        success = disable_vs_ai_mode(target_id)
-        if success:
-            request = ReplyMessageRequest(
-                reply_token=reply_token,
-                messages=[
-                    TextMessage(
-                        text="✅ 已關閉 AI 對弈模式！\n\n現在恢復為一般對弈模式（一人一手棋）。"
-                    )
-                ],
-            )
-        else:
-            request = ReplyMessageRequest(
-                reply_token=reply_token,
-                messages=[TextMessage(text="❌ 關閉對弈模式失敗，請稍後再試。")],
-            )
-        await asyncio.to_thread(line_bot_api.reply_message, request)
+        await handle_disable_ai_mode(target_id, reply_token)
         return
 
     if "投子" in text:
-        state = get_game_state(target_id)
-        current_turn = state.get("current_turn", 1)
-        resign_side = "黑" if current_turn == 1 else "白"
-        winner_side = "白" if current_turn == 1 else "黑"
-        resign_msg = f"{resign_side}方投子，{winner_side}方獲勝！"
-        reset_game_state(target_id)
-        request = ReplyMessageRequest(
-            reply_token=reply_token,
-            messages=[
-                TextMessage(text=resign_msg),
-                TextMessage(text="棋盤已重置，黑棋請下。"),
-            ],
-        )
-        await asyncio.to_thread(line_bot_api.reply_message, request)
+        await handle_resign_command(target_id, reply_token)
         return
 
     if "重置" in text or "reset" in text.lower():
-        reset_game_state(target_id)
-        request = ReplyMessageRequest(
-            reply_token=reply_token,
-            messages=[TextMessage(text="棋盤已重置，黑棋請下。")],
-        )
-        await asyncio.to_thread(line_bot_api.reply_message, request)
+        await handle_reset_command(target_id, reply_token)
         return
 
     undo_match = re.match(r"^(?:悔棋|undo)(?:\s+(\d+))?$", text, re.IGNORECASE)
