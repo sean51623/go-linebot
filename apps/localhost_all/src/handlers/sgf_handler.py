@@ -95,13 +95,16 @@ def extract_moves(root_node):
         if node.has_property("B"):
             move_number += 1
             coord = node.get("B")
-            if isinstance(coord, (list, tuple)) and len(coord) > 0:
-                coord = coord[0]
-            # sgfmill returns coordinates as tuples (x, y)
-            if isinstance(coord, (list, tuple)) and len(coord) == 2:
-                coord_str = chr(coord[0] + 97) + chr(
-                    coord[1] + 97
+            # sgfmill returns a (row, col) tuple for normal moves, or None for pass
+            # A coord is a tuple of two ints; don't unpack it like a list-of-moves
+            if isinstance(coord, tuple) and len(coord) == 2 and isinstance(coord[0], int):
+                # Convert (row_from_bottom, col) to SGF coord string (col_letter, row_letter_from_top)
+                coord_str = chr(coord[1] + 97) + chr(
+                    (18 - coord[0]) + 97
                 )  # Convert to SGF format
+            elif isinstance(coord, (list,)) and len(coord) > 0:
+                coord = coord[0]
+                coord_str = str(coord)
             else:
                 coord_str = str(coord)
             current_move = {
@@ -117,13 +120,16 @@ def extract_moves(root_node):
         elif node.has_property("W"):
             move_number += 1
             coord = node.get("W")
-            if isinstance(coord, (list, tuple)) and len(coord) > 0:
-                coord = coord[0]
-            # sgfmill returns coordinates as tuples (x, y)
-            if isinstance(coord, (list, tuple)) and len(coord) == 2:
-                coord_str = chr(coord[0] + 97) + chr(
-                    coord[1] + 97
+            # sgfmill returns a (row, col) tuple for normal moves, or None for pass
+            # A coord is a tuple of two ints; don't unpack it like a list-of-moves
+            if isinstance(coord, tuple) and len(coord) == 2 and isinstance(coord[0], int):
+                # Convert (row_from_bottom, col) to SGF coord string (col_letter, row_letter_from_top)
+                coord_str = chr(coord[1] + 97) + chr(
+                    (18 - coord[0]) + 97
                 )  # Convert to SGF format
+            elif isinstance(coord, (list,)) and len(coord) > 0:
+                coord = coord[0]
+                coord_str = str(coord)
             else:
                 coord_str = str(coord)
             current_move = {
