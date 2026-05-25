@@ -102,9 +102,6 @@ def extract_moves(root_node):
                 coord_str = chr(coord[1] + 97) + chr(
                     (18 - coord[0]) + 97
                 )  # Convert to SGF format
-            elif isinstance(coord, (list,)) and len(coord) > 0:
-                coord = coord[0]
-                coord_str = str(coord)
             else:
                 coord_str = str(coord)
             current_move = {
@@ -127,9 +124,6 @@ def extract_moves(root_node):
                 coord_str = chr(coord[1] + 97) + chr(
                     (18 - coord[0]) + 97
                 )  # Convert to SGF format
-            elif isinstance(coord, (list,)) and len(coord) > 0:
-                coord = coord[0]
-                coord_str = str(coord)
             else:
                 coord_str = str(coord)
             current_move = {

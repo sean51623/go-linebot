@@ -16,6 +16,8 @@ def test_parse_sgf_first_move_color():
     result = parse_sgf(sgf_content)
     assert result["moves"][0]["color"] == "B"
     assert result["moves"][1]["color"] == "W"
+    # [dp]: d=col3 -> D, p=row15 from bottom -> 19-15=4 -> D4
+    assert result["moves"][1]["played"] == "D4"
 
 def test_parse_sgf_first_move_coordinate():
     # [pd]: p=col15 -> Q (skip I), d=row3 -> 19-3=16 -> Q16
