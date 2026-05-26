@@ -15,6 +15,7 @@ from handlers.sgf_handler import (
 )
 from handlers.draw_handler import draw_all_moves_gif
 from LLM.providers.openai_provider import call_openai
+from cleanup import cleanup_old_images
 import asyncio
 import json
 
@@ -27,6 +28,13 @@ async def lifespan(app: FastAPI):
 
     # Initialize bot user ID (lazy load, will cache in GCS)
     await get_bot_user_id()
+
+    # Cleanup stale board images
+    project_root = Path(__file__).parent
+    static_dir = project_root / "static"
+    if static_dir.exists():
+        deleted = cleanup_old_images(str(static_dir))
+        logger.info(f"Startup cleanup: deleted {deleted} stale board images")
 
     yield
 

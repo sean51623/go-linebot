@@ -19,6 +19,7 @@ from handlers.sgf_handler import (
 from handlers.katago_handler import run_katago_analysis
 from handlers.draw_handler import draw_all_moves_gif
 from LLM.providers.openai_provider import call_openai
+from cleanup import cleanup_old_images
 
 
 @asynccontextmanager
@@ -29,6 +30,12 @@ async def lifespan(app: FastAPI):
 
     # Initialize bot user ID
     await init_bot_user_id()
+
+    # Cleanup stale board images
+    static_dir = PROJECT_ROOT / "static"
+    if static_dir.exists():
+        deleted = cleanup_old_images(str(static_dir))
+        logger.info(f"Startup cleanup: deleted {deleted} stale board images")
 
     yield
 
