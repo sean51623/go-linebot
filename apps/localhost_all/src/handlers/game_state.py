@@ -20,6 +20,37 @@ vs_ai_modes: Dict[str, bool] = {}
 current_sgf_files: Dict[str, str] = {}  # target_id → filename
 
 
+def _state_json_path(target_id: str):
+    """Return path to state.json for the current game of target_id, or None."""
+    if target_id not in game_ids:
+        return None
+    current_file = Path(__file__)
+    project_root = current_file.parent.parent.parent
+    static_dir = project_root / "static"
+    return static_dir / game_ids[target_id] / "state.json"
+
+
+def _save_state_json(target_id: str) -> None:
+    path = _state_json_path(target_id)
+    if path is None:
+        return
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with open(path, "w") as f:
+        json.dump({"vs_ai_mode": vs_ai_modes.get(target_id, False)}, f)
+
+
+def _load_state_json(target_id: str) -> None:
+    path = _state_json_path(target_id)
+    if path is None or not path.exists():
+        return
+    try:
+        with open(path) as f:
+            data = json.load(f)
+        vs_ai_modes[target_id] = data.get("vs_ai_mode", False)
+    except Exception:
+        pass
+
+
 def get_game_id(target_id: str) -> str:
     """Get or create game ID for a target (user/group/room)
     Game ID is a unique identifier for each game session.
@@ -35,6 +66,7 @@ def enable_vs_ai_mode(target_id: str) -> bool:
     """Enable VS AI mode for a target"""
     try:
         vs_ai_modes[target_id] = True
+        _save_state_json(target_id)
         logger.info(f"Enabled VS AI mode for {target_id}")
         return True
     except Exception as error:
@@ -46,6 +78,7 @@ def disable_vs_ai_mode(target_id: str) -> bool:
     """Disable VS AI mode for a target"""
     try:
         vs_ai_modes[target_id] = False
+        _save_state_json(target_id)
         logger.info(f"Disabled VS AI mode for {target_id}")
         return True
     except Exception as error:
@@ -91,6 +124,9 @@ def get_game_state(target_id: str) -> Dict[str, Any]:
             # Generate new game ID
             get_game_id(target_id)
             logger.info(f"Created new game state for {target_id}")
+    # Load persisted vs_ai_mode if not already in memory
+    if target_id not in vs_ai_modes:
+        _load_state_json(target_id)
     return game_states[target_id]
 
 
@@ -291,6 +327,7 @@ def reset_game_state(target_id: str):
         }
         # Generate new game ID for new game
         game_ids[target_id] = f"game_{int(time.time())}"
+        _save_state_json(target_id)
         logger.info(
             f"Reset game state for {target_id}, new game ID: {game_ids[target_id]}"
         )
