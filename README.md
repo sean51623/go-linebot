@@ -164,6 +164,33 @@
 
 <img src="public/move_227.gif" alt="AI 分析最佳步數" width="300">
 
+## 測試
+
+每個應用程式變體都有獨立的測試套件，涵蓋圍棋規則引擎和 SGF 棋譜解析器的核心邏輯。
+
+**執行測試：**
+
+```bash
+# localhost_all
+cd apps/localhost_all
+pytest tests/ -v
+
+# gcp_linebot_localhost_katago
+cd apps/gcp_linebot_localhost_katago/gcp_linebot
+pytest tests/ -v
+
+# gcp_linebot_modal_katago
+cd apps/gcp_linebot_modal_katago/gcp_linebot
+pytest tests/ -v
+```
+
+每個套件應顯示 **28 passed**。若尚未安裝 pytest，請先執行 `pip install pytest` 或啟用專案的虛擬環境。
+
+**測試涵蓋範圍：**
+
+- `tests/test_go_engine.py` — 圍棋規則：座標解析、落子、提子、打劫、禁手
+- `tests/test_sgf_handler.py` — SGF 棋譜解析、勝率差距篩選
+
 ## 技術架構
 
 - **後端框架**: FastAPI
