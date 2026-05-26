@@ -530,7 +530,7 @@ async def handle_file_message(event: Dict[str, Any]):
         # Save file to static folder
         saved_file = await save_sgf_file(file_buffer, file_name)
         import handlers.game_state as _game_state
-        _game_state.current_sgf_file_name = saved_file["fileName"]
+        _game_state.current_sgf_files[target_id] = saved_file["fileName"]
 
         # Notify user file is saved (use replyMessage to reduce usage)
         request = ReplyMessageRequest(

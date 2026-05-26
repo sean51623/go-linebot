@@ -17,7 +17,7 @@ from handlers.go_engine import GoBoard
 game_states: Dict[str, Dict[str, Any]] = {}
 game_ids: Dict[str, str] = {}
 vs_ai_modes: Dict[str, bool] = {}
-current_sgf_file_name: Optional[str] = None
+current_sgf_files: Dict[str, str] = {}  # target_id → filename
 
 
 def get_game_id(target_id: str) -> str:

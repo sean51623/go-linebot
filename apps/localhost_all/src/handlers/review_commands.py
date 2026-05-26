@@ -29,7 +29,7 @@ async def handle_review_command(target_id: str, reply_token: Optional[str]):
     used_reply_token = False
 
     try:
-        sgf_file_name = _game_state.current_sgf_file_name
+        sgf_file_name = _game_state.current_sgf_files.get(target_id)
         if not sgf_file_name:
             used_reply_token = await send_message(
                 target_id,
